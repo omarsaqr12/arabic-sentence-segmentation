@@ -13,9 +13,17 @@ $PY predict_blind.py --track closed --all --blind-dir data --out-dir /tmp/dry/cl
 Should print 4 lines ending in `-> ...`. If yes, you're ready.
 
 ## 1. Jul 20 — get the blind test
-Download the blind-test inputs (watch Slack/email), then convert + VALIDATE each
-task with `prepare_blind.py` (fails loudly on any tokenisation anomaly — do not
-hand-convert):
+The blind sets are **gated HuggingFace datasets** (released to registered
+participants by email): `MBZUAI/AraSeg-2026-Shared-Task-{PA,NP,NoPnx-PA,NoPnx-NP}-Blind`.
+Authenticate ONCE with the access token from the organiser email — cache it, never
+put it in a file or commit it:
+```
+hf auth login            # paste the token; answer "n" to git-credential
+$PY fetch_blind_hf.py --inspect   # sanity-check schema first (writes nothing)
+$PY fetch_blind_hf.py             # writes raw/<task>_blind.jsonl (token read from cache)
+```
+Then convert + VALIDATE each task with `prepare_blind.py` (fails loudly on any
+tokenisation anomaly — do not hand-convert):
 ```
 $PY prepare_blind.py --task PA        --in raw/PA_blind.jsonl        --out blind/PA_test.jsonl
 $PY prepare_blind.py --task NoPnx-PA  --in raw/NoPnx-PA_blind.jsonl  --out blind/NoPnx-PA_test.jsonl
