@@ -12,5 +12,7 @@ jobs:
         run: |
           python src/baselines.py --task PA --jsonl fixtures/PA_mini.jsonl --rules punct verse par --out /tmp/fix.csv
           python src/eval_local.py --task PA --gold-jsonl fixtures/PA_mini.jsonl --predictions /tmp/fix.csv --show-worst 2
+      - name: behavioral regression tests
+        run: python -m unittest discover -s tests -v
       - name: all modules compile
         run: python -m py_compile src/*.py
