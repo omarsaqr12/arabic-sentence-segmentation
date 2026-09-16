@@ -5,14 +5,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: actions/setup-python@v5
         with: {python-version: "3.10"}
       - run: pip install pandas numpy scikit-learn
+      - name: Assert Noor's exact upstream commit is checked out
+        run: |
+          test -f research/noor-ensar/jury/build_packets.py
+          test "$(git -C research/noor-ensar rev-parse HEAD)" = "122f50214f66c2dd5628a06fa2449783d7368e4b"
       - name: rule baseline + offline eval on the fixture
         run: |
           python src/baselines.py --task PA --jsonl fixtures/PA_mini.jsonl --rules punct verse par --out /tmp/fix.csv
           python src/eval_local.py --task PA --gold-jsonl fixtures/PA_mini.jsonl --predictions /tmp/fix.csv --show-worst 2
-      - name: behavioral regression tests
+      - name: behavioral regression tests including ENSAR integration
         run: python -m unittest discover -s tests -v
-      - name: all modules compile
-        run: python -m py_compile src/*.py
+      - name: first-party modules and integration script compile
+        run: |
+          python -m py_compile src/*.py tests/*.py
+          bash -n scripts/ensar.sh
