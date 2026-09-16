@@ -1,0 +1,3 @@
+[submodule "research/noor-ensar"]
+	path = research/noor-ensar
+	url = https://github.com/noortaytoy1/araseg-competition.git

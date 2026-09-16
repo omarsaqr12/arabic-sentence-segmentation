@@ -1,261 +1,75 @@
-# Arabic Sentence Segmentation — AraSeg 2026 Shared Task
+# Arabic Sentence Segmentation — AraSeg 2026
 
 [![fixture-smoke-test](https://github.com/omarsaqr12/arabic-sentence-segmentation/actions/workflows/smoke.yml/badge.svg)](https://github.com/omarsaqr12/arabic-sentence-segmentation/actions/workflows/smoke.yml)
 
-A complete system for **Arabic sentence-boundary detection**, built for the
-[AraSeg 2026 Shared Task](https://www.araseg.aramlab.ai/) at **ArabicNLP 2026
-(@ EMNLP 2026, Budapest)**. The task: given an Arabic document, predict for every
-token whether a sentence boundary follows it — across four variants that cross
-*paragraph availability* × *punctuation availability*.
+**Research code | Arabic NLP | PyTorch / Hugging Face | structured decoding + LLM jury refinement**
 
-> **Ranked #1 on all four closed-track subtasks** (development-phase leaderboards,
-> CodaBench, as `omar_saqr`): **PA 94.4 · NoPnx-PA 87.4 · NP 92.9 · NoPnx-NP 85.0**
-> (open track 85.1) — ahead of the organizer baseline on every board
-> (PA +1.6 … NoPnx-NP +7.3 F1).
+Given an Arabic document, predict whether a sentence ends after **each whitespace token**. The [AraSeg 2026 shared task](https://www.araseg.aramlab.ai/) evaluates four conditions crossing the presence or absence of punctuation and paragraph boundaries. This repository documents two complementary research stages: an Arabic encoder ensemble with length-aware decoding, and **ENSAR**, a subsequent jury-based error-refinement system developed in [Noor Emam's research repository](https://github.com/noortaytoy1/araseg-competition).
 
-The system is a **probability-averaged ensemble of fine-tuned Arabic encoders**
-(AraBERT / AraELECTRA / ARBERT) decoded with a **semi-Markov dynamic program**
-that adds a train-fit segment-length prior and forces structurally-certain
-boundaries. Beyond the leaderboard, the headline result is a **negative one**: a
-20-experiment controlled study (encoder scaling, calibration, augmentation,
-external-data pretraining) shows performance **saturates** — and the paper
-*quantifies* why: a 3-seed **scaling law** (PA at its 94.8 asymptote, α=1.37;
-NoPnx-NP still rising toward 86.4, α=0.66), a **model-free ambiguity check**
-(gold labels are 99%-consistent for repeated contexts, so the residual is
-**context sparsity from 174 training documents — not irreducible noise, and not
-model capacity**), and a Krogh–Vedelsby decomposition (voter diversity is only
-14% of individual error).
+**Start here:** [ENSAR integration and reproducibility](docs/ENSAR_INTEGRATION.md) · [original CPU-only fixture](#quickstart-no-dataset-or-gpu) · [ensemble experiment log](docs/EXPERIMENTS.md) · [original system paper](paper/araseg_system.pdf) · [core inference](src/predict.py)
 
----
+## Two-stage system and provenance
 
-## Results
+1. **Encoder ensemble (this repository's `src/`):** fine-tune Arabic token classifiers, average their boundary probabilities, and apply a train-fit sentence-length prior with structurally constrained decoding. The experiment record investigates diminishing returns from model scaling and ensemble additions.
+2. **ENSAR (pinned [`research/noor-ensar/`](research/noor-ensar/)):** two LLM juries use separately learned, train-error-derived policies to review the ensemble draft, retaining only edits both endorse. The submodule preserves Noor's complete source, jury policies, recorded verdicts, provenance audit and [ENSAR manuscript](research/noor-ensar/paper/ensar_araseg.tex) at the exact reviewed upstream commit. Its original code and data are not silently mixed into or substituted for the encoder implementation.
 
-### Leaderboard (CodaBench dev phase, closed track — official scores)
+The jury work is attributed to **[Noor Emam](https://github.com/noortaytoy1)** and the ENSAR manuscript's author team. See the [integration guide](docs/ENSAR_INTEGRATION.md) for the stage boundaries, original-source attribution, recorded released-test ablations, the documented contamination/remediation history, and a read-only replay procedure. A standard clone needs `git submodule update --init research/noor-ensar` (or clone with `--recurse-submodules`) to obtain ENSAR; GitHub's web UI shows the pinned submodule link without downloading its contents into this repository's main tree.
 
-| Subtask  | Description                              | Closed | Open | Organizer baseline | Δ      |
-|----------|------------------------------------------|:------:|:----:|:------------------:|:------:|
-| PA       | Punctuation + paragraphs                 | **94.4** | **94.4** | 92.8         | +1.6   |
-| NoPnx-PA | Paragraphs, **no punctuation**           | **87.4** | **87.4** | 82.8         | +4.6   |
-| NP       | Punctuation, **no paragraphs**           | **92.9** | **92.9** | 89.7         | +3.2   |
-| NoPnx-NP | **No punctuation, no paragraphs** (hardest) | **85.0** | **85.1** | 77.8      | +7.3   |
+## Recorded ensemble results and evidence
 
-Open = closed on three tasks (external data never beat the closed ensemble there).
-On NoPnx-NP the open system is a **4-voter pool** (AraBERTv02 seed + AraELECTRA +
-an OPUS boundary-recovery voter + a **fine-tuned SaT-12L**): a second round of
-open-track attacks showed data-diverse voters (classical Tashkeela, a 1M-sentence
-scale-up) all *dilute* the ensemble, while the architecture-diverse SaT voter —
-weakest solo — is the only one that helps (dev +0.47, bootstrap CI [+0.15,+0.80];
-test 85.17). Decorrelation, not accumulation. A final round extended the
-architecture axis further: **mDeBERTa-v3** — a fourth architecture family, and
-closed-track legal — joins the NoPnx-PA ensemble in both tracks (dev +0.54,
-CI [+0.20,+0.87]; test 87.27), while longer-SaT and SaT-for-NoPnx-PA variants
-posted positive dev signals but failed test confirmation and were rejected. A
-final **pre-registered seed-averaging round** (variance reduction; ±0.1 regression
-guard, no selection) was adopted for 4 of 5 systems (+0.19 NP, +0.11 NoPnx-PA
-test), and `prepare_blind.py` validates blind-day inputs against invariants
-verified on the public set.
+The earlier README records the following **CodaBench development-phase** closed-track results under the `omar_saqr` submission name. These are historical results as reported in this repository, **not independently rechecked final leaderboard placements** and not reproduced by the small CI fixture.
 
-Per-document macro-F1 (boundary class). Official CodaBench scores matched the
-offline evaluator (`src/eval_local.py`) exactly, so iteration happened offline and
-only verified gains were uploaded.
+| Task | Input structure | Recorded closed-track F1 | Organizer baseline recorded in repo |
+| --- | --- | ---: | ---: |
+| PA | Punctuation and paragraphs | 94.4 | 92.8 |
+| NoPnx-PA | Paragraphs, no punctuation | 87.4 | 82.8 |
+| NP | Punctuation, no paragraphs | 92.9 | 89.7 |
+| NoPnx-NP | Neither punctuation nor paragraphs | 85.0 | 77.8 |
 
-### How the system was built up (dev macro-F1)
+The original record reports first place on all four **development-phase** closed-track boards. This must not be confused with ENSAR's later *official blind-submission scores* or its *released-test ablations*, which involve different conditions and, for NoPnx-PA, a post-deadline retrained jury pair. The [ensemble experiment log](docs/EXPERIMENTS.md) records configurations, seeds, dev/test results where available, failed approaches and selection decisions. Model checkpoints, cached probabilities, submission CSVs, raw datasets and GPU logs are **not committed to the original repository**.
 
-| Stage                               | PA    | NoPnx-PA | NP    | NoPnx-NP |
-|-------------------------------------|:-----:|:--------:|:-----:|:--------:|
-| Rule baseline                       | 72.16 | 45.20    | 60.21 | 13.36    |
-| Single AraBERTv02 (fine-tuned)      | 94.81 | 86.43    | 92.92 | 83.07    |
-| 3-encoder probability ensemble      | 94.94 | 87.06    | 93.16 | 84.16    |
-| + semi-Markov DP decode (6-model)   | 95.15 | 87.15    | 93.37 | 84.37    |
-| + document-adaptive length prior    | —     | 87.16    | —     | **84.53** |
+## Architecture: follow the data
 
-Full run-by-run log (every model / window / threshold / seed with dev **and**
-held-out test F1) is in **[docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)**.
+1. [`src/data.py`](src/data.py) reads one of four task datasets or an offline JSONL export; `\n` paragraph markers are tokens rather than ordinary whitespace.
+2. [`src/train_encoder.py`](src/train_encoder.py) fine-tunes a token classifier, assigning each word's boundary label to its last subword and masking other subwords.
+3. [`src/predict.py`](src/predict.py) predicts over overlapping document windows, averages probabilities for covered words, forces paragraph-marker labels to zero and writes submission CSVs.
+4. [`src/cache_probs.py`](src/cache_probs.py), [`src/ensemble_sweep.py`](src/ensemble_sweep.py), [`src/dp_decode.py`](src/dp_decode.py) and [`src/dp_adaptive.py`](src/dp_adaptive.py) support the ensemble and structured-decoding studies.
+5. [`research/noor-ensar/jury/`](research/noor-ensar/jury/) contains ENSAR's policy training record, packet construction, jury prompts, strict application/scoring, and saved verdicts. [`scripts/ensar.sh`](scripts/ensar.sh) exposes safe packet, scoring and **no-LLM replay** entry points.
+6. [`src/eval_local.py`](src/eval_local.py) scores per-document boundary-class precision, recall and F1 and rejects ID, length and malformed-prediction errors.
 
----
+For the original encoder research workflow, see [`docs/PLAYBOOK.md`](docs/PLAYBOOK.md), [`docs/RUNBOOK_BLIND_TEST.md`](docs/RUNBOOK_BLIND_TEST.md) and [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md). Historical shell experiments live in [`scripts/`](scripts/); inspect paths, model requirements and compute demands before executing them.
 
-## Approach
+## Quickstart: no dataset or GPU
 
-**Framing.** Binary token classification: each whitespace token gets a 0/1 label
-on its **last subword** ("a boundary follows this token"); other subwords are
-masked. Paragraph `\n` marks become a `[PAR]` special token, excluded from the
-loss and forced to `0` at inference. Class-weighted loss handles the ~8–11%
-boundary rate. Long documents are processed in overlapping windows whose
-probabilities are averaged.
-
-**Ensemble.** Probability averaging over 6 voters — 4 AraBERTv02 seeds + ARBERTv2
-+ AraELECTRA. Gains concentrate exactly where punctuation cues vanish (+1.1 F1 on
-NoPnx-NP vs +0.1 on PA). AraBERTv02 beat every alternative encoder on all four
-tasks; larger models (AraBERT-large, XLM-R-large, mmBERT, CAMeLBERT) all
-*underperformed* the base — the signature of a data-limited, not capacity-limited,
-problem.
-
-**Decoding.** Rather than independent per-token thresholding, a **semi-Markov
-dynamic program** picks the boundary set maximizing
-`Σ log p(boundary) + Σ log(1−p) + λ·Σ log P_len(segment length)`, with the
-length prior `P_len` fit on **train** (closed-track legal). Structurally-certain
-boundaries (the token before `\n`, and the document-final token — a gold
-invariant in 396/396 train+dev docs) are forced. A two-pass *document-adaptive*
-variant re-estimates each document's length distribution and re-decodes, which
-helps on the short, regular sentences of the no-punctuation tasks.
-
-**The negative result (the interesting part).** ~20 controlled additions were
-tried and measured on held-out test; **none beat the ensemble on any conventional axis** (the two eventual exceptions, found in later rounds, are both *bidirectional architecture* changes — see below):
-
-- More/different voters (window-240, CAMeLBERT-MSA/CA, mmBERT, SaT, augmentation,
-  weight-soups): saturated — too correlated with existing voters.
-- Bigger encoders: all lost to base AraBERTv02 (174 docs can't feed 370M params).
-- Per-voter calibration (label smoothing + FGM adversarial training): lifts a
-  *single* model by +0.68 F1, but the ensemble's variance reduction already
-  captures it (dev +0.2, test −0.06).
-- A **bootstrap selection procedure** (3000× document resamples) detected when the
-  dev set is too small to separate tied configs and tie-broke toward the
-  lower-variance choice — flipping 2/4 blind-test submissions to a simpler
-  ensemble, validated on held-out test.
-
-A boundary-level **error analysis** then localizes the ceiling: on punctuated
-tasks errors concentrate on the comma — hard not because it is random (its label
-is near-deterministic given ±2 tokens of context) but because each comma context
-is *rare*; on no-punctuation tasks 88–89% of misses fall on token bigrams *never
-seen* in the 174 training documents, and only 5% of dev boundary contexts are
-covered by training at all. The bottleneck is data, and the head-room is
-quantified (power-law asymptotes with bootstrap CIs, a calibration-grounded
-Bayes floor, SaT-12L zero-shot ≈69 as the external reference point).
-
-**The full write-up:** [paper/araseg_system.pdf](paper/araseg_system.pdf)
-(6 pp, 5 figures, 8 tables). An [ACL-template version](paper/acl/) with a
-proper `.bib` is ready for the ArabicNLP 2026 submission (~Aug 8).
-
----
-
-## Repository structure
-
-```
-.
-├── README.md                  ← you are here
-├── requirements.txt
-├── LICENSE                    (MIT)
-│
-├── src/                       ← all Python modules
-│   ├── data.py                load AraSeg from HuggingFace / local JSONL; constants
-│   ├── baselines.py           rule baselines (punct / verse / par / every-k)
-│   ├── train_encoder.py       token-classification fine-tuning (windows, [PAR], weighted loss)
-│   ├── predict.py             overlapping-window inference + format validation
-│   ├── eval_local.py          offline mirror of the official metric
-│   ├── cache_probs.py         cache per-model boundary probabilities (.npz)
-│   ├── ensemble_sweep.py      probability-averaging ensemble + threshold sweep
-│   ├── weighted_ensemble.py   greedy per-voter weight search (dev)
-│   ├── dp_decode.py           semi-Markov length-prior DP decoding
-│   ├── dp_adaptive.py         two-pass document-adaptive length prior
-│   ├── sweep_threshold.py     per-task decision-threshold tuning
-│   ├── augment.py             corruption / token-deletion augmentation
-│   ├── build_pretrain.py      synthetic boundary-recovery pretraining data (open track)
-│   ├── bootstrap_stability.py 3000× bootstrap config selection under a small dev set
-│   ├── residual_errors.py     irreducible-vs-systematic boundary error analysis
-│   ├── genre_buckets.py       per-genre score breakdown
-│   ├── sat_eval.py            SaT / wtpsplit zero-shot baseline (open track)
-│   ├── predict_blind.py       one-command reproduction of all 8 frozen submissions
-│   ├── significance.py  make_figures.py  scaling_eval.py  scaling_bands.py
-│   ├── analysis_astar.py  analysis_astar2.py   (paper diagnostics: scaling law,
-│   │                        Bayes floor, Krogh–Vedelsby, model-free ambiguity)
-│   ├── train_sat_ft.py  satft_blind.py          SaT-12L voter (torch>=2.6 env)
-│   ├── train_qwen_lora.py                       causal-LLM voter (negative result)
-│   ├── build_open2_data.py  open_eval2.py  round3_eval.py  round4_eval.py  open_sweep4.py
-│   └── gen_test_*.py          test-split submission builders
-│
-├── scripts/                   ← shell training batteries (encoder/seed/window sweeps)
-│   ├── train_all.sh  train_battery*.sh  train_matrix.sh
-│   ├── train_scaling.sh  train_scaling_seeds.sh   (scaling-law experiments)
-│   └── open_pipeline.sh  open_wiki.sh  open_round2.sh  round3.sh   (open-track rounds)
-│
-├── docs/
-│   ├── EXPERIMENTS.md         full experiment log (20+ runs, dev + test F1)
-│   ├── PLAYBOOK.md            end-to-end guide: setup → submission → paper
-│   └── RUNBOOK_BLIND_TEST.md  mechanical blind-test procedure (reproducible)
-│
-├── paper/                     ← system-description paper (.tex → .pdf, figs/)
-│   └── acl/                   ← ACL-template port (acl.sty, .bib) for ArabicNLP 2026
-└── fixtures/PA_mini.jsonl     ← tiny schema-exact fixture for smoke tests (also run in CI)
-```
-
-> Heavy, regenerable artifacts (`data/`, `probs/`, `ext/`, `subs/`, `runs/`,
-> `logs/`) are intentionally **not** committed — see `.gitignore`. The dataset is
-> re-fetched with `src/data.py`; everything else is reproduced by the scripts above.
-> Scripts use flat sibling imports, so run them as `python src/<name>.py` from the
-> repository root (shell scripts in `scripts/` already `cd` to the root themselves).
-
----
-
-## Quickstart
+From a checkout with Python 3.10 installed, exercise the original baseline/evaluator on the checked-in three-document JSONL fixture:
 
 ```bash
-conda create -n araseg python=3.10 -y && conda activate araseg
-pip install -r requirements.txt
+python -m pip install pandas numpy scikit-learn
+python src/baselines.py --task PA --jsonl fixtures/PA_mini.jsonl \
+  --rules punct verse par --out /tmp/araseg_fixture.csv
+python src/eval_local.py --task PA --gold-jsonl fixtures/PA_mini.jsonl \
+  --predictions /tmp/araseg_fixture.csv --show-worst 2
+python -m unittest discover -s tests -v
+```
 
-# 1) Fetch the data locally (one task shown; repeat for NoPnx-PA / NP / NoPnx-NP)
+CI checks the original baseline, evaluator and behavioral regressions, and the ENSAR submodule integration. **A passing fixture, syntax check or recorded-verdict replay does not reproduce training or prove an external leaderboard claim.** For ENSAR's saved-verdict, no-LLM replay, initialize the submodule and follow [`docs/ENSAR_INTEGRATION.md`](docs/ENSAR_INTEGRATION.md).
+
+## Training and full reproduction
+
+For original encoder experiments, install [`requirements.txt`](requirements.txt), obtain the four [MBZUAI AraSeg task datasets](https://huggingface.co/MBZUAI), and consult the [official starter/evaluator](https://github.com/mbzuai-nlp/araseg-shared-task-2026) and [playbook](docs/PLAYBOOK.md). For example, after obtaining data and a suitable PyTorch/GPU environment:
+
+```bash
 python src/data.py --task PA --out-dir data
-
-# 2) Rule baseline -> submission CSV (no GPU needed)
-python src/baselines.py --task PA --split dev --rules punct verse par --out subs/PA_dev.csv
-
-# 3) Score offline (mirrors the official metric, with correct P/R labels)
-python src/eval_local.py --task PA --split dev --predictions subs/PA_dev.csv --show-worst 5
-
-# 4) Fine-tune an encoder (a single 16 GB GPU / Colab T4 is plenty — 174 train docs)
-python src/train_encoder.py --task NoPnx-NP --out-dir runs/nopnx-np
-
-# 5) Predict + validate format, then upload the CSV on CodaBench
-python src/predict.py --model runs/nopnx-np --task NoPnx-NP --split dev --out subs/NoPnx-NP_dev.csv
+python src/train_encoder.py --task PA --out-dir runs/pa
+python src/predict.py --model runs/pa --task PA --split dev \
+  --out subs/PA_dev.csv
+python src/eval_local.py --task PA --split dev --predictions subs/PA_dev.csv
 ```
 
-**Reproduce the full ensemble + decoding system:** cache each model's
-probabilities (`src/cache_probs.py`), average them (`src/ensemble_sweep.py`), then
-decode (`src/dp_decode.py` / `src/dp_adaptive.py`). Exact configs per task are in
-[docs/EXPERIMENTS.md](docs/EXPERIMENTS.md); `src/predict_blind.py` regenerates all
-eight frozen submissions in one command.
+These commands train **one** model, not the full published ensemble or ENSAR. Exact model identities, seed selections, threshold/decode choices and required artifacts are detailed in the respective experiment records. A fresh-checkout GPU/LLM reproduction and external score verification have **not** been performed in this integration. The submission schema is `Document ID,Prediction` with one binary character per token, including paragraph markers. Use `src/predict.py --check-ids PATH_TO_OFFICIAL_EXAMPLE.csv` to compare IDs and lengths with the official example file.
 
-**Submission format.** CSV with columns `Document ID,Prediction`, where
-`Prediction` is a binary string with exactly one `0/1` per token (including `\n`
-tokens). `src/predict.py --check-ids` validates IDs and lengths against the
-official example files.
+## Papers, authorship and limitations
 
----
+The original standalone paper is [`paper/araseg_system.pdf`](paper/araseg_system.pdf), with source in [`paper/araseg_system.tex`](paper/araseg_system.tex). The newer [ENSAR manuscript](research/noor-ensar/paper/ensar_araseg.tex) is **a separate work**; its source lists Noor Emam, Omar Saqr, Mostafa Gafaar and Aly El-aswad, with contact details still requiring author verification. Do not treat the original [`paper/acl/araseg_acl.tex`](paper/acl/araseg_acl.tex) as a ready-to-submit ACL file: the tracked source has duplicate LaTeX preambles and an author-list TODO. The root [`CITATION.cff`](CITATION.cff) also has unresolved author metadata and should not be reused as the ENSAR citation. No manuscript authorship or publication status was silently changed.
 
-## Notes on the data (these drive the modeling)
-
-- Tokens are whitespace-split; **punctuation marks are their own tokens**, and in
-  punctuated variants the gold boundary `1` sits **on** the punctuation token.
-- **Paragraph breaks are literal `\n` tokens** (PA variants); gold labels the
-  token *before* `\n` as the boundary and `\n` itself as `0`.
-- Commas are *sometimes* boundaries (e.g. hadith isnad chains) — pure punctuation
-  rules cap out there; that residual ambiguity is the modeling head-room.
-- Splits: **174 train / 222 dev / 262 test** docs (~700 tokens each), 8 genres.
-  The metric is per-document macro-F1, so short docs and rare genres count equally.
-
----
-
-## Links
-
-- **Task site:** https://www.araseg.aramlab.ai/
-- **Official eval + starter code:** https://github.com/mbzuai-nlp/araseg-shared-task-2026
-- **Dataset (HuggingFace):** `MBZUAI/AraSeg-2026-Shared-Task-{PA, NoPnx-PA, NP, NoPnx-NP}`
-- **Dataset paper:** *Arabic Sentence Segmentation Across Genres and Punctuation
-  Conditions* — [arXiv:2606.08025](https://arxiv.org/abs/2606.08025)
-
-To run the official evaluator or use `src/predict.py --check-ids`, clone the
-starter repo alongside this one:
-```bash
-git clone https://github.com/mbzuai-nlp/araseg-shared-task-2026
-```
-
-## Citing
-
-See [CITATION.cff](CITATION.cff); the system paper is
-[paper/araseg_system.pdf](paper/araseg_system.pdf) (ACL-format version in
-[paper/acl/](paper/acl/)).
-
-## License
-
-[MIT](LICENSE). This repository contains only original system code; it does **not**
-redistribute the AraSeg corpus or the organizers' official code (each under their
-own MIT license — see links above).
+The root [MIT license](LICENSE) covers the original repository code; the pinned ENSAR submodule carries its own upstream license and history. Third-party datasets, pretrained checkpoints and hosted LLMs have separate access, use and cost terms. ENSAR's recorded scores are subject to the provenance and remediation details in its [`CONTAMINATION_MAP.md`](research/noor-ensar/CONTAMINATION_MAP.md); the integration does not independently verify them or imply deployment readiness.

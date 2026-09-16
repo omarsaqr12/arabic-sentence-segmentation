@@ -27,11 +27,23 @@ from data import TASKS, load_task
 
 
 def load_predictions(path: str) -> Dict[str, List[int]]:
-    df = pd.read_csv(path, header=0, dtype={"Prediction": str})
-    return {
-        str(row["Document ID"]): [int(c) for c in str(row["Prediction"]).strip()]
-        for _, row in df.iterrows()
-    }
+    """Read submission CSV without silently overwriting duplicated document IDs."""
+    df = pd.read_csv(path, header=0, dtype={"Document ID": str, "Prediction": str})
+    required = {"Document ID", "Prediction"}
+    if not required.issubset(df.columns):
+        raise ValueError(f"Missing submission columns: {sorted(required - set(df.columns))}")
+    pred = {}
+    for _, row in df.iterrows():
+        if pd.isna(row["Document ID"]) or pd.isna(row["Prediction"]):
+            raise ValueError("Missing document ID or prediction in submission CSV")
+        doc_id = str(row["Document ID"])
+        if doc_id in pred:
+            raise ValueError(f"Duplicate document ID in submission CSV: {doc_id!r}")
+        bits = str(row["Prediction"]).strip()
+        if not bits or any(bit not in "01" for bit in bits):
+            raise ValueError(f"Invalid binary prediction for document {doc_id!r}")
+        pred[doc_id] = [int(bit) for bit in bits]
+    return pred
 
 
 def compute_metrics(gold: Dict[str, List[int]], pred: Dict[str, List[int]]) -> dict:
