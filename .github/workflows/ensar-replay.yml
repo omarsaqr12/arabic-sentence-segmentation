@@ -1,0 +1,25 @@
+name: ENSAR released-test verification
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/ensar-replay.yml'
+      - 'verification/**'
+      - 'research/noor-ensar'
+      - 'scripts/ensar.sh'
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install CPU-only replay requirements
+        run: python -m pip install 'numpy<3' 'datasets==3.6.0'
+      - name: Replay published saved verdicts against four public test sets
+        run: python verification/verify_ensar_replay.py
