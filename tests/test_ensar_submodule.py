@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ENSAR = ROOT / "research" / "noor-ensar"
 PIN = "122f50214f66c2dd5628a06fa2449783d7368e4b"
+TRACKS = ("PA", "NP", "NoPnx-PA", "NoPnx-NP")
 
 
 @unittest.skipUnless((ENSAR / "jury" / "build_packets.py").is_file(),
@@ -21,6 +22,13 @@ class ENSARIntegrationTests(unittest.TestCase):
             ["git", "-C", str(ENSAR), "rev-parse", "HEAD"], text=True
         ).strip()
         self.assertEqual(revision, PIN)
+
+    def test_released_verdict_files_cover_each_reported_test_set(self):
+        for track in TRACKS:
+            with self.subTest(track=track):
+                verdicts = list((ENSAR / "jury" / "verdicts_test" / track).glob("doc_*.json"))
+                self.assertEqual(len(verdicts), 262)
+                self.assertTrue((ENSAR / "jury" / "draft_rows" / (track + ".json")).is_file())
 
     def test_packet_generation_excludes_gold_and_strict_scorer_accepts_verdicts(self):
         docs = [
