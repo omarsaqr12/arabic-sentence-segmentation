@@ -2,7 +2,8 @@ cff-version: 1.2.0
 message: "This citation covers the original encoder/decoding project and its draft. For the separate ENSAR manuscript, see docs/CITATION.md."
 title: "Arabic sentence segmentation: encoder ensembles and structured decoding"
 authors:
-  - name: "Team omar_saqr"
+  - given-names: Omar
+    family-names: Saqr
 type: software
 repository-code: "https://github.com/omarsaqr12/arabic-sentence-segmentation"
 keywords: [arabic-nlp, sentence-segmentation, shared-task, araseg-2026]
@@ -11,6 +12,7 @@ preferred-citation:
   type: unpublished
   title: "Saturation as a Result: Ensembling, Length-Prior Decoding, and the Data Ceiling in Arabic Sentence Segmentation"
   authors:
-    - name: "Team omar_saqr"
+    - given-names: Omar
+      family-names: Saqr
   year: 2026
   url: "https://github.com/omarsaqr12/arabic-sentence-segmentation/blob/main/paper/araseg_system.pdf"
