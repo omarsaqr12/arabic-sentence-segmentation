@@ -1,18 +1,16 @@
 cff-version: 1.2.0
-message: "If you use this system or its analyses, please cite the system paper."
-title: "Saturation as a Result: Ensembling, Length-Prior Decoding, and the Data Ceiling in Arabic Sentence Segmentation"
+message: "This citation covers the original encoder/decoding project and its draft. For the separate ENSAR manuscript, see docs/CITATION.md."
+title: "Arabic sentence segmentation: encoder ensembles and structured decoding"
 authors:
-  - family-names: Ganna
-    given-names: Omar
+  - name: "Team omar_saqr"
 type: software
 repository-code: "https://github.com/omarsaqr12/arabic-sentence-segmentation"
 keywords: [arabic-nlp, sentence-segmentation, shared-task, araseg-2026]
 license: MIT
 preferred-citation:
-  type: conference-paper
+  type: unpublished
   title: "Saturation as a Result: Ensembling, Length-Prior Decoding, and the Data Ceiling in Arabic Sentence Segmentation"
   authors:
-    - family-names: Ganna
-      given-names: Omar
-  collection-title: "Proceedings of ArabicNLP 2026 (EMNLP 2026), AraSeg Shared Task"
+    - name: "Team omar_saqr"
   year: 2026
+  url: "https://github.com/omarsaqr12/arabic-sentence-segmentation/blob/main/paper/araseg_system.pdf"
