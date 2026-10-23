@@ -10,12 +10,11 @@ The checked-in [standalone manuscript source](../paper/araseg_system.tex) credit
 **Team omar_saqr** and is titled *Saturation as a Result: Ensembling, Length-Prior
 Decoding, and the Data Ceiling in Arabic Sentence Segmentation*.
 
-The root [CITATION.cff](../CITATION.cff) uses that recorded team attribution for
-the original work. It no longer names the unsupported individual **Omar Ganna**.
-The manuscript source does not establish an individual author list, so repository
-ownership is not used to invent one. Its preferred citation is marked
-**unpublished** because this checkout does not establish an archival proceedings
-record for that standalone draft.
+The author is **Omar Saqr**, as confirmed by the repository owner. The root
+[CITATION.cff](../CITATION.cff) uses this name for the original software and draft.
+**Team omar_saqr** is the submission label retained in the checked-in manuscript
+source. Its preferred citation is marked **unpublished** because this checkout
+does not establish an archival proceedings record for that standalone draft.
 
 ## ENSAR
 
